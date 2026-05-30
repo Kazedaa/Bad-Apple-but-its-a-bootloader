@@ -89,8 +89,8 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     if (!fileFound) FatalPanic(SystemTable, gop, 255, 255, 0);
 
     // --- ALLOCATE THE RLE FRAME BUFFER ---
-    UINT32 resX = 640; 
-    UINT32 resY = 360;
+    UINT32 resX = 1920; 
+    UINT32 resY = 1080;
     UINTN frameSize = resX * resY * 4; 
     UINT32 *frameBuffer = NULL;
     
