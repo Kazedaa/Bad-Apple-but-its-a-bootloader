@@ -5,8 +5,13 @@ import struct
 # --- Configuration ---
 INPUT_VIDEO = "bad_apple.mp4" # path to the input video file
 OUTPUT_FILE = "video.bpl" # keep this the same or change the path in run.sh accordingly
+<<<<<<< HEAD
 WIDTH = 1920  # 1270 for QEMU simulation
 HEIGHT = 1080 # 720 for QEMU simulation
+=======
+WIDTH = 1920  # 640 for QEMU simulation
+HEIGHT = 1080 # 360 for QEMU simulation
+>>>>>>> ff850d6 (finishing touches)
 
 print(f"Compiling {INPUT_VIDEO} into custom RLE format...")
 

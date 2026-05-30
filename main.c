@@ -76,9 +76,17 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
         while(1);
     }
 
+<<<<<<< HEAD
 // --- 3. ALLOCATE THE RLE FRAME BUFFER ---
     UINTN frameSize = 1920 * 1080 * 4; 
     UINT32 *frameBuffer = NULL; // Using UINT32 array for easier pixel tracking
+=======
+    // --- ALLOCATE THE RLE FRAME BUFFER ---
+    UINT32 resX = 1920; 
+    UINT32 resY = 1080;
+    UINTN frameSize = resX * resY * 4; 
+    UINT32 *frameBuffer = NULL; 
+>>>>>>> ff850d6 (finishing touches)
     
     status = uefi_call_wrapper(SystemTable->BootServices->AllocatePool, 3, EfiLoaderData, frameSize, (void**)&frameBuffer);
     if (EFI_ERROR(status)) while(1);

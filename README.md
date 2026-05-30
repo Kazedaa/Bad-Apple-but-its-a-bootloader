@@ -1,7 +1,7 @@
-# BadAppleOS
-BadAppleOS is a standalone UEFI application written in C that functions as a bare-metal micro-operating system. Its primary purpose is to take control of a computer's graphics hardware during the boot sequence to stream video directly to the screen.
+# Bad Apple but its a bootloader.
+It is a standalone UEFI application written in C that functions as a bare-metal micro-operating system. Its primary purpose is to take control of a computer's graphics hardware during the boot sequence to stream video directly to the screen.
 
-
+Here is a [showcase](https://youtu.be/h3Jw0tkbIqc).
 
 ## Architecture
 The application interfaces directly with the motherboard's firmware. It utilizes the UEFI Graphics Output Protocol (GOP) to access the display's framebuffer at native resolutions and full color depth.
@@ -34,7 +34,7 @@ Configure the input file
 ```bash
 ./run.sh
 ```
-QEMU simulation is capped at 1270x720. Change the resolution in `encoder.py`
+For QEMU simulation use 640x360. Change the resolution in `encoder.py` and `main.c`.
 QEMU simulation may display the video at a different speed due to emulator overhead. Adjust the Stall timing in main.c if needed for testing. 
 
 ### Bare Metal Deployment
