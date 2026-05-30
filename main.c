@@ -143,13 +143,25 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
 
             // If frame is complete
             if (pixels_drawn == max_pixels) {
-                // Blast to screen
-                uefi_call_wrapper(gop->Blt, 10, gop, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)frameBuffer, EfiBltBufferToVideo, 
-                                  0, 0, startX, startY, 1920, 1080, 0);
+                
+                // 1. BYPASS BLT: Get the direct memory address of the GPU
+                UINT32 *gpuBuffer = (UINT32*)(UINTN)gop->Mode->FrameBufferBase;
+                
+                // The GPU might have invisible padding at the edge of the screen.
+                // 'PixelsPerScanLine' tells us the true width of the GPU's memory row.
+                UINT32 pitch = gop->Mode->Info->PixelsPerScanLine;
 
-                // Now that disk I/O is gone, memory parsing takes almost 0ms.
-                // Stalling for 16.66ms will actually result in ~60fps now.
-                uefi_call_wrapper(SystemTable->BootServices->Stall, 1, 16666);
+                // Copy our completed frame directly to GPU memory, row by row
+                for (UINTN y = 0; y < 1080; y++) {
+                    UINT32 *destRow = &gpuBuffer[(startY + y) * pitch + startX];
+                    UINT32 *srcRow  = &frameBuffer[y * 1920];
+                    
+                    // Direct memory copy (1920 pixels * 4 bytes per pixel)
+                    uefi_call_wrapper(SystemTable->BootServices->CopyMem, 3, destRow, srcRow, 1920 * 4);
+                }
+
+                // 2. STALL: To adjust FPS
+                // uefi_call_wrapper(SystemTable->BootServices->Stall, 1, 5000);
                 
                 pixels_drawn = 0;
             }
