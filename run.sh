@@ -31,6 +31,7 @@ mdir -i uefi.img@@1M ::/EFI/BOOT
 echo "--- Booting QEMU ---"
 cp /usr/share/edk2-ovmf/x64/OVMF_VARS.4m.fd ./OVMF_VARS.4m.fd
 qemu-system-x86_64 \
+  -m 1G \
   -drive if=pflash,format=raw,readonly=on,file=/usr/share/edk2-ovmf/x64/OVMF_CODE.4m.fd \
   -drive if=pflash,format=raw,file=OVMF_VARS.4m.fd \
   -drive format=raw,file=uefi.img \

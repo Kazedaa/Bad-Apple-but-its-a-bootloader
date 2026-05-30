@@ -2,3 +2,6 @@
 *.efi
 *.o
 *.so
+*.4m.fd
+*.img
+*.bpl
