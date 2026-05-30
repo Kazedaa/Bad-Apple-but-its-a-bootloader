@@ -91,43 +91,79 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     UINTN startX = (calcX < 0) ? 0 : (UINTN)calcX;
     UINTN startY = (calcY < 0) ? 0 : (UINTN)calcY;
 
-    // --- 4. THE CUSTOM RLE CODEC LOOP ---
+    // --- 4. LOAD ENTIRE VIDEO INTO RAM ---
+    // Allocate 500MB for the video file
+    UINTN maxFileSize = 500 * 1024 * 1024; 
+    UINT8 *videoBuffer = NULL;
+    status = uefi_call_wrapper(SystemTable->BootServices->AllocatePool, 3, EfiLoaderData, maxFileSize, (void**)&videoBuffer);
+    if (EFI_ERROR(status)) {
+        // Flash BLUE if out of memory
+        EFI_GRAPHICS_OUTPUT_BLT_PIXEL blue = {255, 0, 0, 0};
+        uefi_call_wrapper(gop->Blt, 10, gop, &blue, EfiBltVideoFill, 0, 0, 0, 0, gop->Mode->Info->HorizontalResolution, gop->Mode->Info->VerticalResolution, 0);
+        while(1);
+    }
+
+    UINTN totalBytesRead = 0;
+    UINTN chunkSize = 10 * 1024 * 1024; // Read in 10MB chunks for UEFI stability
+
+    while (totalBytesRead < maxFileSize) {
+        UINTN bytesToRead = chunkSize;
+        // Don't read past our 500MB allocated buffer
+        if (totalBytesRead + bytesToRead > maxFileSize) {
+            bytesToRead = maxFileSize - totalBytesRead;
+        }
+        
+        status = uefi_call_wrapper(videoFile->Read, 3, videoFile, &bytesToRead, videoBuffer + totalBytesRead);
+        
+        // Break if we hit End of File or an error
+        if (EFI_ERROR(status) || bytesToRead == 0) break; 
+        
+        totalBytesRead += bytesToRead;
+    }
+
+    // We are done with the disk! Close the file.
+    uefi_call_wrapper(videoFile->Close, 1, videoFile);
+
+
+    // --- 5. THE CUSTOM RLE CODEC LOOP (RAM-BASED) ---
     UINT32 pixels_drawn = 0;
     UINT32 max_pixels = 1920 * 1080;
+    UINTN bufferOffset = 0;
 
-    while (1) {
-        UINT32 chunk[2]; // chunk[0] = Count, chunk[1] = Color
-        UINTN readSize = 8;
-        
-        // Read exactly one 8-byte instruction
-        status = uefi_call_wrapper(videoFile->Read, 3, videoFile, &readSize, chunk);
-        
-        // Break if the video is over
-        if (EFI_ERROR(status) || readSize < 8) break; 
+    while (bufferOffset + 8 <= totalBytesRead) {
+        // Read 8 bytes directly from RAM
+        UINT32 count = *((UINT32*)(videoBuffer + bufferOffset));
+        UINT32 color = *((UINT32*)(videoBuffer + bufferOffset + 4));
+        bufferOffset += 8;
 
-        UINT32 count = chunk[0];
-        UINT32 color = chunk[1];
-
-        // Execute the instruction: Draw 'count' number of pixels
+        // Execute the instruction
         for (UINT32 i = 0; i < count; i++) {
             frameBuffer[pixels_drawn] = color;
             pixels_drawn++;
 
-            // If we have successfully filled an entire 1920x1080 frame...
+            // If frame is complete
             if (pixels_drawn == max_pixels) {
-                
-                // Blast the completed frame to the screen
+                // Blast to screen
                 uefi_call_wrapper(gop->Blt, 10, gop, (EFI_GRAPHICS_OUTPUT_BLT_PIXEL*)frameBuffer, EfiBltBufferToVideo, 
                                   0, 0, startX, startY, 1920, 1080, 0);
 
-                // Pause for 60 FPS
+                // Now that disk I/O is gone, memory parsing takes almost 0ms.
+                // Stalling for 16.66ms will actually result in ~60fps now.
                 uefi_call_wrapper(SystemTable->BootServices->Stall, 1, 16666);
                 
-                // Reset the tracker to 0 and begin drawing the next frame
                 pixels_drawn = 0;
             }
         }
     }
+
+    // --- 6. CLEANUP ---
+    uefi_call_wrapper(SystemTable->BootServices->FreePool, 1, videoBuffer);
+    uefi_call_wrapper(SystemTable->BootServices->FreePool, 1, frameBuffer);
+
+    // Reset the system
+    uefi_call_wrapper(SystemTable->RuntimeServices->ResetSystem, 4, EfiResetCold, EFI_SUCCESS, 0, NULL);    
+
+    return EFI_SUCCESS;
 
     // --- 5. CLEANUP ---
     uefi_call_wrapper(SystemTable->BootServices->FreePool, 1, frameBuffer);
